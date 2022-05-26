@@ -697,6 +697,7 @@ type fieldInfo struct {
 	Num       int
 	OmitEmpty bool
 	MinSize   bool
+	IsDup     bool
 	Inline    []int
 }
 
@@ -759,6 +760,8 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 					info.MinSize = true
 				case "inline":
 					inline = true
+				case "dup":
+					info.IsDup = true
 				default:
 					msg := fmt.Sprintf("Unsupported flag %q in tag %q of type %s", flag, tag, st)
 					panic(externalPanic(msg))
@@ -791,7 +794,10 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 					return nil, err
 				}
 				for _, finfo := range sinfo.FieldsList {
-					if _, found := fieldsMap[finfo.Key]; found {
+					if f, found := fieldsMap[finfo.Key]; found {
+						if f.IsDup {
+							continue
+						}
 						msg := "Duplicated key '" + finfo.Key + "' in struct " + st.String()
 						return nil, errors.New(msg)
 					}
@@ -815,7 +821,10 @@ func getStructInfo(st reflect.Type) (*structInfo, error) {
 			info.Key = strings.ToLower(field.Name)
 		}
 
-		if _, found = fieldsMap[info.Key]; found {
+		if f, found := fieldsMap[info.Key]; found {
+			if f.IsDup {
+				continue
+			}
 			msg := "Duplicated key '" + info.Key + "' in struct " + st.String()
 			return nil, errors.New(msg)
 		}
